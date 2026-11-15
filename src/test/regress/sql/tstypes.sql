@@ -279,3 +279,20 @@ SELECT setweight('a asd w:5,6,12B,13A zxc'::tsvector, 'c', ARRAY['a', 'zxc', '',
 SELECT ts_filter('base:7A empir:17 evil:15 first:11 galact:16 hidden:6A rebel:1A spaceship:2A strike:3A victori:12 won:9'::tsvector, '{a}');
 SELECT ts_filter('base hidden rebel spaceship strike'::tsvector, '{a}');
 SELECT ts_filter('base hidden rebel spaceship strike'::tsvector, '{a,b,NULL}');
+
+-- Test binary I/O, including an empty query (bug #19778).
+\getenv abs_builddir PG_ABS_BUILDDIR
+\set filename :abs_builddir '/results/tsquery.bin'
+
+CREATE TEMP TABLE tsquery_binary (id integer, query tsquery);
+INSERT INTO tsquery_binary VALUES
+    (1, ''),
+    (2, 'foo'),
+    (3, 'foo & !bar'),
+    (4, 'foo <2> bar:A*'),
+    (5, NULL);
+COPY tsquery_binary TO :'filename' (FORMAT binary);
+TRUNCATE tsquery_binary;
+COPY tsquery_binary FROM :'filename' (FORMAT binary);
+SELECT id, query, numnode(query) FROM tsquery_binary ORDER BY id;
+DROP TABLE tsquery_binary;
